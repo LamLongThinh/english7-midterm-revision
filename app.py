@@ -37,7 +37,7 @@ MCQ = [
     {"part":"Revision 1", "section":"Choose the best answer", "q":".......... are not good for your health.", "opts":["vegetables","soft drinks","fruits"], "ans":1},
     {"part":"Revision 1", "section":"Choose the best answer", "q":"We are not cleaning .......... our community library.", "opts":["up","on","at"], "ans":0},
     {"part":"Revision 1", "section":"Choose the best answer", "q":"We .......... much fast food.", "opts":["aren't eat","don't eat","isn't eat"], "ans":1},
-    {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: yoga / amazing / donate.", "opts":["yoga","amazing","donate"], "ans":1, "review":True},
+    {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: yoga / amazing / donate.", "opts":["yoga","amazing","donate"], "ans":2, "review":True},
     {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: developed / planted / needed.", "opts":["developed","planted","needed"], "ans":0},
     {"part":"Revision 1", "section":"Word stress", "q":"Find the word which has a different stress.", "opts":["donate","provide","volunteer"], "ans":2},
     {"part":"Revision 1", "section":"Word stress", "q":"Find the word which has a different stress.", "opts":["community","service","homeless"], "ans":0},
