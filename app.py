@@ -37,7 +37,7 @@ MCQ = [
     {"part":"Revision 1", "section":"Choose the best answer", "q":".......... are not good for your health.", "opts":["vegetables","soft drinks","fruits"], "ans":1},
     {"part":"Revision 1", "section":"Choose the best answer", "q":"We are not cleaning .......... our community library.", "opts":["up","on","at"], "ans":0},
     {"part":"Revision 1", "section":"Choose the best answer", "q":"We .......... much fast food.", "opts":["aren't eat","don't eat","isn't eat"], "ans":1},
-    {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: yoga / amazing / donate.", "opts":["yoga","amazing","donate"], "ans":2, "review":True},
+    {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: yoga / amazing / donate.", "opts":["yoga","amazing","donate"], "ans":1, "review":True},
     {"part":"Revision 1", "section":"Pronunciation", "q":"Find the word which has a different sound in the underlined part: developed / planted / needed.", "opts":["developed","planted","needed"], "ans":0},
     {"part":"Revision 1", "section":"Word stress", "q":"Find the word which has a different stress.", "opts":["donate","provide","volunteer"], "ans":2},
     {"part":"Revision 1", "section":"Word stress", "q":"Find the word which has a different stress.", "opts":["community","service","homeless"], "ans":0},
@@ -106,34 +106,18 @@ def normalize_answer(value):
     value = re.sub(r"\s+", " ", value)
     return value
 
-def save_to_google_sheets(record):
-    """Append one attempt to Google Sheets if secrets are configured."""
-    import gspread
-    from google.oauth2.service_account import Credentials
+def save_to_supabase(record):
+    """Save one attempt to Supabase when its URL and key are configured."""
+    if "SUPABASE_URL" not in st.secrets or "SUPABASE_KEY" not in st.secrets:
+        return False, "Supabase chưa được cấu hình trong Streamlit Secrets."
 
-    if "gcp_service_account" not in st.secrets or "spreadsheet_id" not in st.secrets:
-        return False, "Google Sheets chưa được cấu hình trong Streamlit Secrets."
+    from supabase import create_client
 
-    credentials_info = dict(st.secrets["gcp_service_account"])
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-    credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
-    client = gspread.authorize(credentials)
-    spreadsheet = client.open_by_key(st.secrets["spreadsheet_id"])
-
-    try:
-        worksheet = spreadsheet.worksheet("KetQua")
-    except gspread.WorksheetNotFound:
-        worksheet = spreadsheet.add_worksheet(title="KetQua", rows=2000, cols=len(HEADERS) + 2)
-
-    if not worksheet.get_all_values():
-        worksheet.append_row(HEADERS, value_input_option="USER_ENTERED")
-
-    row = [record.get(header, "") for header in HEADERS]
-    worksheet.append_row(row, value_input_option="USER_ENTERED")
-    return True, "Google Sheets"
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    client = create_client(url, key)
+    client.table("english7_results").insert(record).execute()
+    return True, "Supabase"
 
 def save_local_csv(record):
     path = "ket_qua_english7.csv"
@@ -272,21 +256,21 @@ if submitted:
         }
 
         # Save every submission as a separate attempt.
-        saved_to_sheets = False
-        sheets_message = ""
+        saved_to_database = False
+        database_message = ""
         try:
-            saved_to_sheets, sheets_message = save_to_google_sheets(record)
+            saved_to_database, database_message = save_to_supabase(record)
         except Exception as exc:
-            sheets_message = f"Không thể ghi vào Google Sheets: {exc}"
+            database_message = f"Không thể ghi vào cơ sở dữ liệu Supabase: {exc}"
 
-        if saved_to_sheets:
-            st.session_state["save_status"] = ("success", "Đã lưu lượt làm vào Google Sheets.")
+        if saved_to_database:
+            st.session_state["save_status"] = ("success", "Đã lưu lượt làm vào cơ sở dữ liệu trực tuyến.")
         else:
             try:
                 save_local_csv(record)
-                st.session_state["save_status"] = ("warning", f"{sheets_message} Đã lưu dự phòng vào tệp CSV của ứng dụng. Trên Streamlit Cloud, CSV không bảo đảm tồn tại sau khi ứng dụng khởi động lại.")
+                st.session_state["save_status"] = ("warning", f"{database_message} Đã lưu dự phòng vào tệp CSV của ứng dụng. Trên Streamlit Cloud, CSV không bảo đảm tồn tại sau khi ứng dụng khởi động lại.")
             except Exception as exc:
-                st.session_state["save_status"] = ("error", f"{sheets_message} Đồng thời không lưu được CSV dự phòng: {exc}")
+                st.session_state["save_status"] = ("error", f"{database_message} Đồng thời không lưu được CSV dự phòng: {exc}")
 
 if "last_result" in st.session_state:
     result = st.session_state["last_result"]
@@ -325,15 +309,11 @@ if "last_result" in st.session_state:
 
     st.caption("Muốn làm lại, em có thể chỉnh sửa câu trả lời phía trên rồi nhấn NỘP BÀI VÀ CHẤM ĐIỂM lần nữa. Mỗi lần nộp được lưu thành một lượt riêng.")
 
-with st.expander("Hướng dẫn dành cho giáo viên: cấu hình Google Sheets"):
+with st.expander("Hướng dẫn dành cho giáo viên: cấu hình cơ sở dữ liệu"):
     st.markdown("""
-1. Tạo một Google Sheet trống.
-2. Tạo Google Cloud **Service Account**, bật Google Sheets API và Google Drive API, rồi tạo khóa JSON.
-3. Chia sẻ Google Sheet cho email `client_email` của Service Account với quyền **Editor**.
-4. Trong Streamlit Community Cloud, mở **App settings → Secrets** và thêm cấu hình theo file `secrets.toml.example`.
-5. Khởi động lại ứng dụng. Ứng dụng sẽ tự tạo trang tính `KetQua` và thêm một dòng cho mỗi lần nộp bài.
+Ứng dụng lưu từng lượt làm vào bảng `english7_results` trên Supabase. Làm theo hướng dẫn trong file `README.md` và chạy câu lệnh SQL trong file `supabase_setup.sql` một lần trong SQL Editor của Supabase. Sau đó nhập `SUPABASE_URL` và `SUPABASE_KEY` vào **Streamlit Community Cloud → App settings → Secrets**.
 
-Không đưa khóa JSON hoặc nội dung Secrets lên GitHub công khai.
+Không đưa khóa bí mật lên GitHub hoặc chia sẻ khóa này cho học sinh.
 """)
 
 st.caption("Ứng dụng ôn tập dựa trên REVISION giữa hk1.docx. Giáo viên nên rà soát đáp án, đặc biệt câu phát âm có định dạng gạch chân, trước khi dùng chính thức.")
